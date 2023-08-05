@@ -35,13 +35,11 @@ func (lexer *Lexer) NextToken() token.Token {
 
   switch lexer.ch  {
     case '=':
-      if lexer.peekChar() == '=' {
-        ch := lexer.ch
-        lexer.readChar()
-        literal := string(ch) + string(lexer.ch)
-        tok = token.Token{Type: token.EQ, Literal: literal}
+      t, didCreate := lexer.makeTwoCharToken('=', token.EQ)
+      if didCreate {
+        tok = t
       } else {
-        tok = newToken(token.ASSIGN,lexer.ch) 
+        tok = newToken(token.ASSIGN, lexer.ch)
       }
     case ';':
       tok = newToken(token.SEMICOLON, lexer.ch) 
@@ -58,11 +56,9 @@ func (lexer *Lexer) NextToken() token.Token {
     case '}':
       tok = newToken(token.RBRACE, lexer.ch)
     case '!':
-      if lexer.peekChar() == '=' {
-        ch := lexer.ch
-        lexer.readChar()
-        literal := string(ch) + string(lexer.ch)
-        tok = token.Token{Type: token.NOT_EQ, Literal: literal}
+      t, didCreate := lexer.makeTwoCharToken('=', token.NOT_EQ)
+      if didCreate {
+        tok = t
       } else {
         tok = newToken(token.BANG, lexer.ch)
       }
@@ -101,7 +97,7 @@ func (lexer *Lexer) readIdentifier() string {
   position := lexer.position
   for isLetter(lexer.ch) {
     lexer.readChar()
-  }
+  }     
   return lexer.input[position:lexer.position] // create slice containing just the identifier of the variable.
 }
 
@@ -138,3 +134,15 @@ func (lexer *Lexer) peekChar() byte {
 
   return lexer.input[lexer.readPosition]
 }
+
+func (lexer *Lexer) makeTwoCharToken(nextChar byte, tokenType token.TokenType) (token.Token, bool) {
+  if lexer.peekChar() == nextChar {
+    ch := lexer.ch
+    lexer.readChar()
+    literal := string(ch) + string(lexer.ch)
+    return token.Token{Type: tokenType, Literal: literal}, true
+  }
+
+  return token.Token{}, false
+}
+
