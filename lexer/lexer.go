@@ -35,7 +35,14 @@ func (lexer *Lexer) NextToken() token.Token {
 
   switch lexer.ch  {
     case '=':
-      tok = newToken(token.ASSIGN,lexer.ch) 
+      if lexer.peekChar() == '=' {
+        ch := lexer.ch
+        lexer.readChar()
+        literal := string(ch) + string(lexer.ch)
+        tok = token.Token{Type: token.EQ, Literal: literal}
+      } else {
+        tok = newToken(token.ASSIGN,lexer.ch) 
+      }
     case ';':
       tok = newToken(token.SEMICOLON, lexer.ch) 
     case '(':
@@ -50,6 +57,23 @@ func (lexer *Lexer) NextToken() token.Token {
       tok = newToken(token.LBRACE, lexer.ch) 
     case '}':
       tok = newToken(token.RBRACE, lexer.ch)
+    case '!':
+      if lexer.peekChar() == '=' {
+        ch := lexer.ch
+        lexer.readChar()
+        literal := string(ch) + string(lexer.ch)
+        tok = token.Token{Type: token.NOT_EQ, Literal: literal}
+      } else {
+        tok = newToken(token.BANG, lexer.ch)
+      }
+    case '/':
+      tok = newToken(token.SLASH, lexer.ch)
+    case '*':
+      tok = newToken(token.ASTERISK, lexer.ch)
+    case '<':
+      tok = newToken(token.LT, lexer.ch)
+    case '>':
+      tok = newToken(token.GT, lexer.ch)
     case 0:
       tok.Literal = ""
       tok.Type = token.EOF
@@ -58,6 +82,10 @@ func (lexer *Lexer) NextToken() token.Token {
         tok.Literal = lexer.readIdentifier()
         tok.Type = token.LookupIdent(tok.Literal)
         return tok // readIdentifier calls readChar repeatedly to update positions, so we early return here.
+      } else if isDigit(lexer.ch) {
+        tok.Type = token.INT
+        tok.Literal = lexer.readNumber()
+        return tok
       } else {
         tok = newToken(token.ILLEGAL, lexer.ch)
       }
@@ -87,4 +115,24 @@ func (lexer *Lexer) skipWhitespace() {
   for lexer.ch == ' ' || lexer.ch == '\t' || lexer.ch == '\n' || lexer.ch == '\r' {
     lexer.readChar()
   }
+}
+
+func (lexer *Lexer) readNumber() string {
+  position := lexer.position
+  for isDigit(lexer.ch) {
+    lexer.readChar()
+  }
+  return lexer.input[position:lexer.position]
+}
+
+func isDigit(ch byte) bool {
+  return '0' <= ch && ch <= '9'
+}
+
+func (lexer *Lexer) peekChar() byte {
+  if lexer.readPosition >= len(lexer.input) {
+    return 0
+  }
+
+  return lexer.input[lexer.readPosition]
 }
