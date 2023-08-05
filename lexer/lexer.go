@@ -74,6 +74,8 @@ func (lexer *Lexer) NextToken() token.Token {
       tok = newToken(token.LT, lexer.ch)
     case '>':
       tok = newToken(token.GT, lexer.ch)
+    case '-':
+      tok = newToken(token.MINUS, lexer.ch)
     case 0:
       tok.Literal = ""
       tok.Type = token.EOF
