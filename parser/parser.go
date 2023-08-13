@@ -12,6 +12,17 @@ type (
   infixParseFn func(ast.Expression) ast.Expression // param is left side of the infix operator
 )
 
+const ( // ORDER OF PRECENDENCE FOR OPERANDS
+  _ int = iota // gives the values below incrementing values, 0, 1, 2, etc.
+  LOWEST // (1)
+  EQUALS // == (2)
+  LESSGREATER // > or < (3)
+  SUM // + (4)
+  PRODUCT // * (5)
+  PREFIX // -X OR !X (6)
+  CALL // myFn(X) (7)
+) // e.g. PDOCUT (*) has higher order precedence than EQUALS (==)
+
 type Parser struct {
   lexer *lexer.Lexer
   currentToken token.Token
@@ -30,6 +41,9 @@ func New(lexer *lexer.Lexer) *Parser {
   // Read two tokens, so currentToken and peekToken are both set
   p.nextToken()
   p.nextToken()
+
+  p.prefixParseFns = make(map[token.TokenType]prefixParseFn)
+  p.registerPrefix(token.IDENT, p.parseIdentifier)
 
   return p
 }
@@ -70,7 +84,7 @@ func (parser *Parser) parseStatement() ast.Statement {
   case token.RETURN:
     return parser.parseReturnStatement()
   default:
-    return nil
+    return parser.parseExpressionStatement()
   }
 }
 
@@ -106,6 +120,34 @@ func (parser *Parser) parseReturnStatement() *ast.ReturnStatement {
   }
 
   return statement
+}
+
+func (parser *Parser) parseExpressionStatement() *ast.ExpressionStatement {
+  statement := &ast.ExpressionStatement{Token: parser.currentToken}
+  statement.Expression = parser.parseExpression(LOWEST)
+
+  if parser.peekTokenIs(token.SEMICOLON) {
+    parser.nextToken()
+  }
+
+  return statement
+
+}
+
+func (parser *Parser) parseIdentifier() ast.Expression {
+  return &ast.Identifier{Token: parser.currentToken, Value: parser.currentToken.Literal}
+}
+
+func (parser *Parser) parseExpression(precendence int) ast.Expression {
+  prefix := parser.prefixParseFns[parser.currentToken.Type]
+
+  if prefix == nil {
+    return nil
+  }
+
+  leftExpr := prefix()
+
+  return leftExpr
 }
 
 func (parser *Parser) currentTokenIs(tokenType token.TokenType) bool {
