@@ -24,6 +24,17 @@ const ( // ORDER OF PRECENDENCE FOR OPERANDS
   CALL // myFn(X) (7)
 ) // e.g. PDOCUT (*) has higher order precedence than EQUALS (==)
 
+var precedences = map[token.TokenType]int {
+  token.EQ:           EQUALS,
+  token.NOT_EQ:       EQUALS,
+  token.LT:           LESSGREATER,
+  token.GT:           LESSGREATER,
+  token.PLUS:         SUM,
+  token.MINUS:        SUM,
+  token.SLASH:        PRODUCT,
+  token.ASTERISK:     PRODUCT,
+}
+
 type Parser struct {
   lexer *lexer.Lexer
   currentToken token.Token
@@ -48,6 +59,16 @@ func New(lexer *lexer.Lexer) *Parser {
   p.registerPrefix(token.INT, p.parseIntegerLiteral)
   p.registerPrefix(token.BANG, p.parsePrefixExpression)
   p.registerPrefix(token.MINUS, p.parsePrefixExpression)
+
+  p.infixParseFns = make(map[token.TokenType]infixParseFn)
+  p.registerInfix(token.PLUS, p.parseInfixExpression)
+  p.registerInfix(token.MINUS, p.parseInfixExpression) 
+  p.registerInfix(token.SLASH, p.parseInfixExpression)
+  p.registerInfix(token.ASTERISK, p.parseInfixExpression)
+  p.registerInfix(token.EQ, p.parseInfixExpression)
+  p.registerInfix(token.NOT_EQ, p.parseInfixExpression)
+  p.registerInfix(token.LT, p.parseInfixExpression)
+  p.registerInfix(token.GT, p.parseInfixExpression)
 
   return p
 }
@@ -152,6 +173,17 @@ func (parser *Parser) parseExpression(precendence int) ast.Expression {
 
   leftExpr := prefix()
 
+  for !parser.peekTokenIs(token.SEMICOLON) && precendence < parser.peekPrecedence() {
+    infix := parser.infixParseFns[parser.peekToken.Type]
+    if infix == nil {
+      return leftExpr
+    }
+
+    parser.nextToken()
+
+    leftExpr = infix(leftExpr)
+  }
+
   return leftExpr
 }
 
@@ -214,3 +246,34 @@ func (parser *Parser) parsePrefixExpression() ast.Expression {
   return expression
 } // e.g. eval -5, PrefixExpression token is -, then advance the token,
   // then expression.Right is 5.
+
+func (parser *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
+  expression := &ast.InfixExpression{
+    Token: parser.currentToken,
+    Operator: parser.currentToken.Literal,
+    Left: left,
+  }
+
+  precedence := parser.currentPrecendence()
+  parser.nextToken()
+  expression.Right = parser.parseExpression(precedence)
+
+  return expression
+
+}
+
+func (parser *Parser) peekPrecedence() int {
+  if prec, ok := precedences[parser.peekToken.Type]; ok {
+    return prec
+  }
+
+  return LOWEST
+}
+
+func (parser *Parser) currentPrecendence() int {
+  if prec, ok := precedences[parser.currentToken.Type]; ok {
+    return prec
+  }
+
+  return LOWEST
+}
