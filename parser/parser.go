@@ -33,6 +33,7 @@ var precedences = map[token.TokenType]int {
   token.MINUS:        SUM,
   token.SLASH:        PRODUCT,
   token.ASTERISK:     PRODUCT,
+  token.LPAREN:       CALL,
 }
 
 type Parser struct {
@@ -74,6 +75,7 @@ func New(lexer *lexer.Lexer) *Parser {
   p.registerInfix(token.NOT_EQ, p.parseInfixExpression)
   p.registerInfix(token.LT, p.parseInfixExpression)
   p.registerInfix(token.GT, p.parseInfixExpression)
+  p.registerInfix(token.LPAREN, p.parseCallExpression)
 
   return p
 }
@@ -121,7 +123,11 @@ func (parser *Parser) parseLetStatement() *ast.LetStatement {
     return nil
   }
 
-  for !parser.currentTokenIs(token.SEMICOLON) {
+  parser.nextToken()
+
+  statement.Value = parser.parseExpression(LOWEST)
+
+  for parser.peekTokenIs(token.SEMICOLON) {
     parser.nextToken()
   }
 
@@ -132,7 +138,9 @@ func (parser *Parser) parseReturnStatement() *ast.ReturnStatement {
   statement := &ast.ReturnStatement{Token: parser.currentToken}
   parser.nextToken()
 
-  for !parser.currentTokenIs(token.SEMICOLON) {
+  statement.ReturnValue = parser.parseExpression(LOWEST)
+
+  if parser.peekTokenIs(token.SEMICOLON) {
     parser.nextToken()
   }
 
@@ -225,6 +233,36 @@ func (parser *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 
   return expression
 
+}
+
+func (parser *Parser) parseCallExpression(function ast.Expression) ast.Expression {
+  expression := &ast.CallExpression{Token: parser.currentToken, Function: function}
+  expression.Arguments = parser.parseCallArguments()
+  return expression
+}
+
+func (parser *Parser) parseCallArguments() []ast.Expression {
+  args := []ast.Expression{}
+
+  if parser.peekTokenIs(token.RPAREN) {
+    parser.nextToken()
+    return args
+  }
+
+  parser.nextToken()
+  args = append(args, parser.parseExpression(LOWEST))
+
+  for parser.peekTokenIs(token.COMMA) {
+    parser.nextToken()
+    parser.nextToken()
+    args = append(args, parser.parseExpression(LOWEST))
+  }
+
+  if !parser.expectPeek(token.RPAREN) {
+    return nil
+  }
+
+  return args
 }
 
 func (parser *Parser) parseGroupedExpression() ast.Expression {
