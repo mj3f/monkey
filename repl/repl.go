@@ -1,14 +1,27 @@
 package repl
 
 import (
-  "bufio"
-  "fmt"
-  "io"
-  "monkey/lexer"
-  "monkey/token"
+	"bufio"
+	"fmt"
+	"io"
+	"monkey/lexer"
+	"monkey/parser"
 )
 
 const PROMPT = ">> "
+const MONKEY_FACE = `            
+            __,__
+   .--.  .-"     "-.  .--.
+  / .. \/  .-. .-.  \/ .. \
+ | |  '|  /   Y   \  |'  | |
+ | \   \  \ 0 | 0 /  /   / |
+  \ '- ,\.-"""""""-./, -' /
+   ''-' /_   ^ ^   _\ '-''
+       |  \._   _./  |
+       \   \ '~' /   /
+        '._ '-=-' _.'
+           '-----'
+`
 
 func Start(in io.Reader, out io.Writer) {
   scanner := bufio.NewScanner(in)
@@ -22,9 +35,25 @@ func Start(in io.Reader, out io.Writer) {
 
     line := scanner.Text()
     lexer := lexer.New(line)
+    parser := parser.New(lexer)
 
-    for tok := lexer.NextToken(); tok.Type != token.EOF; tok = lexer.NextToken() {
-      fmt.Fprintf(out, "%+v\n", tok)
+    program := parser.ParseProgram()
+
+    if len(parser.Errors()) != 0 {
+      printParserErrors(out, parser.Errors())
+      continue
     }
+
+    io.WriteString(out, program.String())
+    io.WriteString(out, "\n")
+  }
+}
+
+func printParserErrors(out io.Writer, errors []string) {
+  io.WriteString(out, MONKEY_FACE)
+  io.WriteString(out, "Woops! We ran into some monkey business here!\n")
+  io.WriteString(out, " errors during parsing:\n")
+  for _, msg := range errors {
+    io.WriteString(out, "\t" + msg + "\n")
   }
 }
