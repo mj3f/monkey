@@ -14,6 +14,7 @@ const (
   // Variable identifiers and literal values
   IDENT     = "IDENT" // variable identifiers, foo, bar, user, etc.
   INT       = "INT"   // 123, 3555
+  STRING    = "STRING"
   
   // Operators
   ASSIGN    = "="
