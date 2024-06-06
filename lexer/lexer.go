@@ -78,6 +78,10 @@ func (lexer *Lexer) NextToken() token.Token {
     case '"':
       tok.Type = token.STRING
       tok.Literal = lexer.readString()
+    case '[':
+      tok = newToken(token.LBRACKET, lexer.ch)
+    case ']':
+      tok = newToken(token.RBRACKET, lexer.ch)
     default:
       if isLetter(lexer.ch) {
         tok.Literal = lexer.readIdentifier()
