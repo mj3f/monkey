@@ -22,6 +22,7 @@ const ( // ORDER OF PRECENDENCE FOR OPERANDS
   PRODUCT // * (5)
   PREFIX // -X OR !X (6)
   CALL // myFn(X) (7)
+  INDEX // array[index] (8)
 ) // e.g. PDOCUT (*) has higher order precedence than EQUALS (==)
 
 var precedences = map[token.TokenType]int {
@@ -34,6 +35,7 @@ var precedences = map[token.TokenType]int {
   token.SLASH:        PRODUCT,
   token.ASTERISK:     PRODUCT,
   token.LPAREN:       CALL,
+  token.LBRACKET:     INDEX,
 }
 
 type Parser struct {
@@ -78,6 +80,7 @@ func New(lexer *lexer.Lexer) *Parser {
   p.registerInfix(token.LT, p.parseInfixExpression)
   p.registerInfix(token.GT, p.parseInfixExpression)
   p.registerInfix(token.LPAREN, p.parseCallExpression)
+  p.registerInfix(token.LBRACKET, p.parseIndexExpression)
 
   return p
 }
@@ -239,6 +242,21 @@ func (parser *Parser) parseInfixExpression(left ast.Expression) ast.Expression {
 
   return expression
 
+}
+
+func (parser *Parser) parseIndexExpression(left ast.Expression) ast.Expression {
+  expression := &ast.IndexExpression{
+    Token: parser.currentToken, 
+    Left: left,
+  }
+  parser.nextToken()
+  expression.Index = parser.parseExpression(LOWEST)
+
+  if !parser.expectPeek(token.RBRACKET) {
+    return nil
+  }
+
+  return expression
 }
 
 func (parser *Parser) parseCallExpression(function ast.Expression) ast.Expression {
