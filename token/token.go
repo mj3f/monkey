@@ -37,6 +37,7 @@ const (
   NOT_EQ    = "!="
   RBRACKET  = "]"
   LBRACKET  = "["
+  COLON     = ":"
 
   // Keywords
   FUNCTION  = "FUNCTION"
